@@ -1,4 +1,4 @@
-# Use an NVIDIA CUDA base image
+# Use an NVIDIA CUDA base image with Python 3.8
 FROM nvidia/cuda:11.6.2-base-ubuntu20.04
 
 # Set the working directory in the container
@@ -11,6 +11,9 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     ipmitool \
     && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip
+RUN pip3 install --no-cache-dir --upgrade pip
 
 # Copy the requirements file into the container
 COPY requirements.txt .
