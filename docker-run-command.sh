@@ -1,3 +1,5 @@
+docker pull ghcr.io/hrtsv/ipmi-gpu-monitor:main
+
 docker run -d \
   --name ipmi-gpu-monitor \
   --runtime=nvidia \
