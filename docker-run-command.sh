@@ -10,5 +10,4 @@ docker run -d \
   -e IPMI_USERNAME=your_ipmi_username \
   -e IPMI_PASSWORD=your_ipmi_password \
   --device /dev/ipmi0:/dev/ipmi0 \
-  $(docker build -q https://github.com/hrtsv/ipmi-gpu-monitor.git)
-  
+  ghcr.io/hrtsv/ipmi-gpu-monitor:main
