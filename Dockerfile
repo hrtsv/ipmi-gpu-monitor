@@ -28,6 +28,9 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN python3.8 -m pip install --no-cache-dir -r requirements.txt
 
+# Print installed package versions
+RUN pip freeze
+
 # Copy the application code into the container
 COPY . .
 
