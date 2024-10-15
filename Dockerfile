@@ -1,25 +1,35 @@
-import os
-import json
-from datetime import timedelta
+# Use an NVIDIA CUDA base image
+FROM nvidia/cuda:11.6.2-base-ubuntu20.04
 
-class Config:
-    @staticmethod
-    def load_secrets():
-        secrets_file = '/app/secrets.json'
-        if os.path.exists(secrets_file):
-            with open(secrets_file, 'r') as f:
-                return json.load(f)
-        return {}
+# Set the working directory in the container
+WORKDIR /app
 
-    secrets = load_secrets()
-    
-    SECRET_KEY = secrets.get('SECRET_KEY') or os.environ.get('SECRET_KEY') or 'fallback-secret-key'
-    JWT_SECRET_KEY = secrets.get('JWT_SECRET_KEY') or os.environ.get('JWT_SECRET_KEY') or 'fallback-jwt-secret-key'
-    
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///app.db'
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
-    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
-    IPMI_HOST = os.environ.get('IPMI_HOST')
-    IPMI_USERNAME = os.environ.get('IPMI_USERNAME')
-    IPMI_PASSWORD = os.environ.get('IPMI_PASSWORD')
-    
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    python3-dev \
+    build-essential \
+    ipmitool \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the requirements file into the container
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+# Copy the application code into the container
+COPY . .
+
+# Generate secret keys
+RUN python3 generate_secrets.py
+
+# Expose the port the app runs on
+EXPOSE 5000
+
+# Set environment variables
+ENV FLASK_APP=run.py
+ENV FLASK_RUN_HOST=0.0.0.0
+
+# Run the application
+CMD ["python3", "-m", "flask", "run", "--host=0.0.0.0"]
