@@ -9,5 +9,4 @@ docker run -d \
   -e IPMI_HOST=your_ipmi_host \
   -e IPMI_USERNAME=your_ipmi_username \
   -e IPMI_PASSWORD=your_ipmi_password \
-  --device /dev/ipmi0:/dev/ipmi0 \
   ghcr.io/hrtsv/ipmi-gpu-monitor:main

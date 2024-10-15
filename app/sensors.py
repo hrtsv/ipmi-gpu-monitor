@@ -4,13 +4,14 @@ from app import db
 from app.models import SensorData
 from datetime import datetime
 import logging
+from app.config import Config
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def get_ipmi_sensors(host, username, password):
-    cmd = f"ipmitool -H {host} -U {username} -P {password} -I lanplus sdr list full -v -c"
+def get_ipmi_sensors():
+    cmd = f"ipmitool -H {Config.IPMI_HOST} -U {Config.IPMI_USERNAME} -P {Config.IPMI_PASSWORD} -I lanplus sdr list full -v -c"
     try:
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
         if result.returncode != 0:
@@ -40,7 +41,7 @@ def get_ipmi_sensors(host, username, password):
 
 def update_sensor_data():
     try:
-        ipmi_sensors = get_ipmi_sensors(Config.IPMI_HOST, Config.IPMI_USERNAME, Config.IPMI_PASSWORD)
+        ipmi_sensors = get_ipmi_sensors()
         if not ipmi_sensors:
             logger.warning("No IPMI sensor data retrieved")
         
