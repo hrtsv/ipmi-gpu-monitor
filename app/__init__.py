@@ -13,11 +13,6 @@ def create_app(config_class=Config):
     db.init_app(app)
     jwt.init_app(app)
 
-    with app.app_context():
-        db.create_all()
-        from app.models import User
-        User.create_default_user()
-
     from app.routes import main
     app.register_blueprint(main)
 
