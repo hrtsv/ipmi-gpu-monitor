@@ -21,6 +21,15 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 # Copy the application code into the container
 COPY . .
 
+# Debugging: List contents of /app
+RUN ls -la /app
+
+# Debugging: Print Python version
+RUN python3 --version
+
+# Debugging: Cat the generate_secrets.py file
+RUN cat generate_secrets.py
+
 # Generate secret keys
 RUN python3 generate_secrets.py
 
