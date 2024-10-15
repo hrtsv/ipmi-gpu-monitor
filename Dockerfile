@@ -21,17 +21,8 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 # Copy the application code into the container
 COPY . .
 
-# Debugging: List contents of /app
-RUN ls -la /app
-
-# Debugging: Print Python version
-RUN python3 --version
-
-# Debugging: Cat the generate_secrets.py file
-RUN cat generate_secrets.py
-
-# Generate secret keys
-RUN python3 generate_secrets.py
+# Generate secret keys inline
+RUN python3 -c "import secrets, json; secrets_dict = {'SECRET_KEY': secrets.token_hex(32), 'JWT_SECRET_KEY': secrets.token_hex(32)}; json.dump(secrets_dict, open('/app/secrets.json', 'w')); print('Secret keys generated and saved to secrets.json')"
 
 # Expose the port the app runs on
 EXPOSE 5000
