@@ -1,5 +1,5 @@
-# Use an NVIDIA CUDA base image with Python 3.8
-FROM nvidia/cuda:11.6.2-base-ubuntu20.04
+# Use the latest NVIDIA CUDA base image with Python
+FROM nvidia/cuda:12.2.0-base-ubuntu22.04
 
 # Set the working directory in the container
 WORKDIR /app
@@ -10,9 +10,9 @@ ENV TZ=Etc/UTC
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    python3.8 \
-    python3.8-dev \
+    python3 \
     python3-pip \
+    python3-dev \
     build-essential \
     ipmitool \
     tzdata \
@@ -20,24 +20,16 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Upgrade pip and setuptools
-RUN python3.8 -m pip install --no-cache-dir --upgrade pip setuptools
+RUN python3 -m pip install --no-cache-dir --upgrade pip setuptools
+
 
 # Copy the requirements file into the container
 COPY requirements.txt .
 
-# Install Python dependencies with strict version control
-RUN python3.8 -m pip install --no-cache-dir -r requirements.txt && \
-    python3.8 -m pip install --no-cache-dir --no-deps MarkupSafe==1.1.0 Jinja2==2.11.3
-
-# Print installed package versions
-RUN pip freeze
-
-# Copy the verification script
-COPY verify_imports.py .
-
-# Run the verification script
-RUN python3.8 verify_imports.py
-
+# Install Python dependencies
+RUN python3 -m pip install --no-cache-dir -r requirements.txt
+COPY verify_versions.py .
+RUN python3 verify_versions.py
 # Copy the application code into the container
 COPY . .
 
@@ -49,4 +41,4 @@ ENV FLASK_APP=run.py
 ENV FLASK_RUN_HOST=0.0.0.0
 
 # Run the application
-CMD ["python3.8", "-m", "flask", "run", "--host=0.0.0.0"]
+CMD ["python3", "-m", "flask", "run", "--host=0.0.0.0"]
