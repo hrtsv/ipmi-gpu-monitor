@@ -16,7 +16,6 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     build-essential \
     ipmitool \
-    nvidia-smi \
     tzdata \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
     && rm -rf /var/lib/apt/lists/*

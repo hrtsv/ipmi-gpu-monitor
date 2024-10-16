@@ -4,12 +4,13 @@ from app import db
 from app.models import SensorData
 from datetime import datetime
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
 def get_ipmi_temperatures():
     try:
-        cmd = f"ipmitool -H $IPMI_HOST -U $IPMI_USERNAME -P $IPMI_PASSWORD sdr type temperature"
+        cmd = f"ipmitool -H {os.environ.get('IPMI_HOST')} -U {os.environ.get('IPMI_USERNAME')} -P {os.environ.get('IPMI_PASSWORD')} sdr type temperature"
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
         temperatures = []
         for line in result.stdout.split('\n'):
@@ -26,11 +27,11 @@ def get_ipmi_temperatures():
 
 def get_gpu_temperatures():
     try:
-        cmd = "nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader"
+        cmd = "nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits"
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
         temperatures = []
         for i, line in enumerate(result.stdout.split('\n')):
-            if line:
+            if line.strip():
                 temperatures.append({'name': f'GPU {i}', 'value': float(line.strip())})
         return temperatures
     except Exception as e:
