@@ -1,5 +1,5 @@
-# Use the latest NVIDIA CUDA base image with Ubuntu 22.04
-FROM nvidia/cuda:12.2.0-base-ubuntu22.04
+# Use Ubuntu 22.04 as base image
+FROM ubuntu:22.04
 
 # Set the working directory in the container
 WORKDIR /app
@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     build-essential \
     ipmitool \
+    nvidia-smi \
     tzdata \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
     && rm -rf /var/lib/apt/lists/*
@@ -25,7 +26,7 @@ RUN python3.10 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Upgrade pip and setuptools
-RUN pip install --no-cache-dir --upgrade pip setuptools
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
 # Copy the requirements file into the container
 COPY requirements.txt .
@@ -33,15 +34,8 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Verify installed packages
-RUN pip freeze
-
 # Copy the application code into the container
 COPY . .
-
-# Copy and run the verification script
-COPY verify_versions.py .
-RUN python verify_versions.py
 
 # Expose the port the app runs on
 EXPOSE 5000

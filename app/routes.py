@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, render_template
 from flask_jwt_extended import jwt_required, current_user
 from app.models import SensorData
 from app import db
@@ -9,34 +9,21 @@ main = Blueprint('main', __name__)
 
 @main.route('/')
 def index():
-    return jsonify({"message": "Welcome to IPMI GPU Monitor API"}), 200
+    return render_template('index.html')
 
 @main.route('/api/login', methods=['POST'])
 def api_login():
     return login()
 
-@main.route('/api/sensor_data', methods=['GET'])
-@jwt_required()
-def get_sensor_data():
-    sensor_type = request.args.get('type')
-    limit = request.args.get('limit', 100, type=int)
+@main.route('/api/temperatures', methods=['GET'])
+def get_temperatures():
+    update_sensor_data()  # Update sensor data before fetching
+    ipmi_temps = SensorData.query.filter_by(sensor_type='IPMI').order_by(SensorData.timestamp.desc()).limit(10).all()
+    gpu_temps = SensorData.query.filter_by(sensor_type='GPU').order_by(SensorData.timestamp.desc()).limit(10).all()
     
-    query = SensorData.query.order_by(SensorData.timestamp.desc())
-    if sensor_type:
-        query = query.filter_by(sensor_type=sensor_type)
-    
-    data = query.limit(limit).all()
-    return jsonify([{
-        'timestamp': d.timestamp,
-        'sensor_type': d.sensor_type,
-        'sensor_name': d.sensor_name,
-        'value': d.value
-    } for d in data])
+    return jsonify({
+        'ipmi_temperatures': [{'name': t.sensor_name, 'value': t.value} for t in ipmi_temps],
+        'gpu_temperatures': [{'name': t.sensor_name, 'value': t.value} for t in gpu_temps]
+    })
 
-@main.route('/api/update_sensors', methods=['POST'])
-@jwt_required()
-def api_update_sensors():
-    update_sensor_data()
-    return jsonify({"msg": "Sensor data updated"}), 200
-
-# Add more routes as needed
+# Keep other routes as they were

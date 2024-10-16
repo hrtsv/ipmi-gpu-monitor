@@ -1,19 +1,64 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPMI GPU Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+        .chart-container { width: 80%; margin: 20px auto; }
+    </style>
+</head>
+<body>
+    <h1>IPMI GPU Monitor</h1>
+    <div class="chart-container">
+        <canvas id="temperatureChart"></canvas>
+    </div>
 
-{% block content %}
-<div id="dashboard" style="display: none;">
-    <h2>Sensor Data</h2>
-    <div id="sensorCharts"></div>
-    <h2>Fan Control</h2>
-    <button id="adjustFans">Adjust Fan Speed</button>
-    <p id="fanStatus"></p>
-</div>
-<div id="loginForm" style="display: none;">
-    <h2>Login</h2>
-    <form id="login">
-        <input type="text" id="username" placeholder="Username" required>
-        <input type="password" id="password" placeholder="Password" required>
-        <button type="submit">Login</button>
-    </form>
-</div>
-{% endblock %}
+    <script>
+        let chart;
+
+        function updateChart() {
+            fetch('/api/temperatures')
+                .then(response => response.json())
+                .then(data => {
+                    const labels = [...data.ipmi_temperatures.map(t => t.name), ...data.gpu_temperatures.map(t => t.name)];
+                    const temperatures = [...data.ipmi_temperatures.map(t => t.value), ...data.gpu_temperatures.map(t => t.value)];
+
+                    if (chart) {
+                        chart.data.labels = labels;
+                        chart.data.datasets[0].data = temperatures;
+                        chart.update();
+                    } else {
+                        const ctx = document.getElementById('temperatureChart').getContext('2d');
+                        chart = new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: 'Temperature (°C)',
+                                    data: temperatures,
+                                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                                    borderColor: 'rgba(75, 192, 192, 1)',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                scales: {
+                                    y: {
+                                        beginAtZero: true
+                                    }
+                                }
+                            }
+                        });
+                    }
+                });
+        }
+
+        // Update chart every 30 seconds
+        updateChart();
+        setInterval(updateChart, 30000);
+    </script>
+</body>
+</html>
