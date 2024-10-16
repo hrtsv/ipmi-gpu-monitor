@@ -23,12 +23,19 @@ RUN apt-get update && apt-get install -y \
 RUN python3.8 -m pip install --no-cache-dir --upgrade pip setuptools
 
 # Copy the requirements file into the container
-COPY requirements.txt .
+#COPY requirements.txt .
 
-# Install Python dependencies
-RUN python3.8 -m pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies with exact versions
+#RUN python3.8 -m pip install --no-cache-dir -r requirements.txt
+# Copy the verification script
+COPY verify_imports.py .
 
-# Print installed package versions
+# Run the verification script
+RUN python3.8 verify_imports.py
+
+# ... (rest of the Dockerfile remains the same)
+
+# Verify installed versions
 RUN pip freeze
 
 # Copy the application code into the container
