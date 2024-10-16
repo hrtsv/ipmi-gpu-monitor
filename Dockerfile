@@ -24,15 +24,19 @@ RUN python3.8 -m pip install --no-cache-dir --upgrade pip setuptools
 
 # Copy the requirements file into the container
 COPY requirements.txt .
+
+# Install Python dependencies with strict version control
+RUN python3.8 -m pip install --no-cache-dir -r requirements.txt && \
+    python3.8 -m pip install --no-cache-dir --no-deps MarkupSafe==1.1.0 Jinja2==2.11.3
+
+# Print installed package versions
+RUN pip freeze
+
+# Copy the verification script
 COPY verify_imports.py .
 
 # Run the verification script
 RUN python3.8 verify_imports.py
-# Install Python dependencies
-RUN python3.8 -m pip install --no-cache-dir -r requirements.txt
-
-# Print installed package versions
-RUN pip freeze
 
 # Copy the application code into the container
 COPY . .
