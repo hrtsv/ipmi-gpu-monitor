@@ -1,5 +1,6 @@
 from app import db
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -22,4 +23,11 @@ class User(db.Model):
             db.session.commit()
 
 class SensorData(db.Model):
-    # ... (rest of the SensorData model remains unchanged)
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    sensor_type = db.Column(db.String(64), nullable=False)
+    sensor_name = db.Column(db.String(64), nullable=False)
+    value = db.Column(db.Float, nullable=False)
+
+    def __repr__(self):
+        return f'<SensorData {self.sensor_type} {self.sensor_name}: {self.value}>'
