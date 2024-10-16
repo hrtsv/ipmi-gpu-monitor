@@ -8,6 +8,7 @@
     <style>
         body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
         .chart-container { width: 80%; margin: 20px auto; }
+        #debug { margin-top: 20px; border: 1px solid #ccc; padding: 10px; }
     </style>
 </head>
 <body>
@@ -15,21 +16,37 @@
     <div class="chart-container">
         <canvas id="temperatureChart"></canvas>
     </div>
+    <div id="debug"></div>
 
     <script>
         let chart;
+        const debugElement = document.getElementById('debug');
+
+        function log(message) {
+            console.log(message);
+            debugElement.innerHTML += message + '<br>';
+        }
 
         function updateChart() {
+            log('Fetching temperature data...');
             fetch('/api/temperatures')
-                .then(response => response.json())
+                .then(response => {
+                    log(`Response status: ${response.status}`);
+                    return response.json();
+                })
                 .then(data => {
+                    log(`Received data: ${JSON.stringify(data)}`);
                     const labels = [...data.ipmi_temperatures.map(t => t.name), ...data.gpu_temperatures.map(t => t.name)];
                     const temperatures = [...data.ipmi_temperatures.map(t => t.value), ...data.gpu_temperatures.map(t => t.value)];
+
+                    log(`Labels: ${labels.join(', ')}`);
+                    log(`Temperatures: ${temperatures.join(', ')}`);
 
                     if (chart) {
                         chart.data.labels = labels;
                         chart.data.datasets[0].data = temperatures;
                         chart.update();
+                        log('Chart updated');
                     } else {
                         const ctx = document.getElementById('temperatureChart').getContext('2d');
                         chart = new Chart(ctx, {
@@ -52,7 +69,11 @@
                                 }
                             }
                         });
+                        log('Chart created');
                     }
+                })
+                .catch(error => {
+                    log(`Error: ${error.message}`);
                 });
         }
 
