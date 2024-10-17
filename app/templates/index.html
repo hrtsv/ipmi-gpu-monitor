@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IPMI Monitor</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@2.0.2/build/global/luxon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.1.0/dist/chartjs-adapter-luxon.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
         .chart-container { width: 80%; margin: 20px auto; }
@@ -31,14 +33,14 @@
             }
 
             if (charts[containerId]) {
-                charts[containerId].data.labels = data.map(d => new Date(d.timestamp).toLocaleTimeString());
+                charts[containerId].data.labels = data.map(d => luxon.DateTime.fromISO(d.timestamp));
                 charts[containerId].data.datasets[0].data = data.map(d => d.value);
                 charts[containerId].update();
             } else {
                 charts[containerId] = new Chart(document.getElementById(containerId), {
                     type: 'line',
                     data: {
-                        labels: data.map(d => new Date(d.timestamp).toLocaleTimeString()),
+                        labels: data.map(d => luxon.DateTime.fromISO(d.timestamp)),
                         datasets: [{
                             label: label,
                             data: data.map(d => d.value),
@@ -52,7 +54,7 @@
                             x: {
                                 type: 'time',
                                 time: {
-                                    unit: 'hour'
+                                    unit: 'minute'
                                 }
                             },
                             y: {
