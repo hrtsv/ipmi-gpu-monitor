@@ -21,40 +21,47 @@
         const errorMessageElement = document.getElementById('error-message');
         let charts = {};
 
-        function createChart(containerId, label, data) {
-            const ctx = document.getElementById(containerId).getContext('2d');
-            return new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: data.map(d => new Date(d.timestamp).toLocaleTimeString()),
-                    datasets: [{
-                        label: label,
-                        data: data.map(d => d.value),
-                        borderColor: 'rgb(75, 192, 192)',
-                        tension: 0.1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: {
-                            type: 'time',
-                            time: {
-                                unit: 'hour'
+        function createOrUpdateChart(containerId, label, data) {
+            const ctx = document.getElementById(containerId);
+            if (!ctx) {
+                const container = document.createElement('div');
+                container.className = 'chart-container';
+                container.innerHTML = `<canvas id="${containerId}"></canvas>`;
+                chartsContainer.appendChild(container);
+            }
+
+            if (charts[containerId]) {
+                charts[containerId].data.labels = data.map(d => new Date(d.timestamp).toLocaleTimeString());
+                charts[containerId].data.datasets[0].data = data.map(d => d.value);
+                charts[containerId].update();
+            } else {
+                charts[containerId] = new Chart(document.getElementById(containerId), {
+                    type: 'line',
+                    data: {
+                        labels: data.map(d => new Date(d.timestamp).toLocaleTimeString()),
+                        datasets: [{
+                            label: label,
+                            data: data.map(d => d.value),
+                            borderColor: 'rgb(75, 192, 192)',
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: 'hour'
+                                }
+                            },
+                            y: {
+                                beginAtZero: true
                             }
-                        },
-                        y: {
-                            beginAtZero: true
                         }
                     }
-                }
-            });
-        }
-
-        function updateChart(chart, label, data) {
-            chart.data.labels = data.map(d => new Date(d.timestamp).toLocaleTimeString());
-            chart.data.datasets[0].data = data.map(d => d.value);
-            chart.update();
+                });
+            }
         }
 
         function updateCharts() {
@@ -71,32 +78,24 @@
                     // Create or update temperature charts
                     for (const [sensorName, sensorData] of Object.entries(data.temperatures)) {
                         const containerId = `chart-temp-${sensorName.replace(/\s+/g, '-')}`;
-                        if (!charts[containerId]) {
-                            if (!document.getElementById(containerId)) {
-                                const container = document.createElement('div');
-                                container.className = 'chart-container';
-                                container.innerHTML = `<canvas id="${containerId}"></canvas>`;
-                                chartsContainer.appendChild(container);
-                            }
-                            charts[containerId] = createChart(containerId, `${sensorName} Temperature`, sensorData);
-                        } else {
-                            updateChart(charts[containerId], `${sensorName} Temperature`, sensorData);
-                        }
+                        createOrUpdateChart(containerId, `${sensorName} Temperature`, sensorData);
                     }
 
                     // Create or update fan charts
                     for (const [sensorName, sensorData] of Object.entries(data.fans)) {
                         const containerId = `chart-fan-${sensorName.replace(/\s+/g, '-')}`;
-                        if (!charts[containerId]) {
-                            if (!document.getElementById(containerId)) {
-                                const container = document.createElement('div');
-                                container.className = 'chart-container';
-                                container.innerHTML = `<canvas id="${containerId}"></canvas>`;
-                                chartsContainer.appendChild(container);
-                            }
-                            charts[containerId] = createChart(containerId, `${sensorName} Fan Speed`, sensorData);
-                        } else {
-                            updateChart(charts[containerId], `${sensorName} Fan Speed`, sensorData);
+                        createOrUpdateChart(containerId, `${sensorName} Fan Speed`, sensorData);
+                    }
+
+                    // Remove charts for sensors that no longer exist
+                    for (const chartId in charts) {
+                        const [, type, name] = chartId.split('-');
+                        const sensorName = name.replace(/-/g, ' ');
+                        if ((type === 'temp' && !data.temperatures[sensorName]) ||
+                            (type === 'fan' && !data.fans[sensorName])) {
+                            charts[chartId].destroy();
+                            delete charts[chartId];
+                            document.getElementById(chartId).parentNode.remove();
                         }
                     }
                 })
