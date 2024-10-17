@@ -4,62 +4,19 @@ import os
 from app import db
 from app.models import SensorData
 from datetime import datetime
+import shutil
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 def get_ipmi_data():
-    try:
-        ipmi_host = os.environ.get('IPMI_HOST')
-        ipmi_user = os.environ.get('IPMI_USERNAME')
-        ipmi_pass = os.environ.get('IPMI_PASSWORD')
-        cmd = f"ipmitool -H {ipmi_host} -U {ipmi_user} -P {ipmi_pass} -I lanplus sdr"
-        logger.debug(f"Executing IPMI command: {cmd}")
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
-        logger.debug(f"IPMI command output: {result.stdout}")
-        logger.debug(f"IPMI command error: {result.stderr}")
-        
-        if result.returncode != 0:
-            logger.error(f"IPMI command failed with return code {result.returncode}")
-            return [], []
-        
-        temperatures = []
-        fans = []
-        cpu_count = 0
-        for line in result.stdout.split('\n'):
-            parts = line.split('|')
-            if len(parts) >= 3:
-                name = parts[0].strip()
-                value_str = parts[1].strip()
-                status = parts[2].strip()
-                
-                if 'degrees C' in value_str:
-                    try:
-                        value = float(value_str.split()[0])
-                        if name == 'Temp':
-                            cpu_count += 1
-                            name = f'CPU {cpu_count}'
-                        temperatures.append({'name': name, 'value': value})
-                    except ValueError:
-                        logger.warning(f"Could not parse temperature value: {value_str} for sensor: {name}")
-                elif 'RPM' in value_str:
-                    try:
-                        value = float(value_str.split()[0])
-                        fans.append({'name': name, 'value': value})
-                    except ValueError:
-                        logger.warning(f"Could not parse fan speed value: {value_str} for sensor: {name}")
-        
-        logger.debug(f"Parsed IPMI temperatures: {temperatures}")
-        logger.debug(f"Parsed IPMI fan speeds: {fans}")
-        return temperatures, fans
-    except subprocess.TimeoutExpired:
-        logger.error("IPMI command timed out")
-        return [], []
-    except Exception as e:
-        logger.error(f"Error fetching IPMI data: {e}")
-        return [], []
+    # ... (keep the existing get_ipmi_data function as it is)
 
 def get_gpu_temperatures():
+    if not shutil.which('nvidia-smi'):
+        logger.warning("nvidia-smi not found. GPU monitoring is not available.")
+        return []
+
     try:
         cmd = "nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits"
         logger.debug(f"Executing GPU command: {cmd}")
@@ -111,3 +68,6 @@ def update_sensor_data():
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error committing sensor data to database: {e}")
+
+    if not gpu_temps:
+        logger.info("No GPU temperature data available. Make sure NVIDIA drivers and nvidia-smi are installed if you have NVIDIA GPUs.")
