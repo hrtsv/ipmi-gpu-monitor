@@ -19,7 +19,10 @@ def create_app(config_class=Config):
     logging.basicConfig(level=logging.DEBUG)
 
     with app.app_context():
+        # Import models here to ensure they are registered with SQLAlchemy
+        from app.models import SensorData
         db.create_all()
+        app.logger.info("Database initialized")
 
     from app.routes import main
     app.register_blueprint(main)
