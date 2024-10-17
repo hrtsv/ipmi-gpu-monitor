@@ -25,5 +25,3 @@ def get_temperatures():
     except Exception as e:
         logger.error(f"Error in get_temperatures: {e}")
         return jsonify({'error': str(e)}), 500
-
-# Add any other routes here
