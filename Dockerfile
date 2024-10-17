@@ -35,7 +35,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the application code into the container
 COPY . .
+# ... (previous Dockerfile content)
 
+# Copy the application code into the container
+COPY . .
+
+# List contents of app/templates directory
+RUN ls -la /app/app/templates
+
+# ... (rest of the Dockerfile)
 # Expose the port the app runs on
 EXPOSE 5000
 

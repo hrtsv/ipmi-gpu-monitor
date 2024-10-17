@@ -5,17 +5,26 @@ from app.models import SensorData
 from datetime import datetime
 import logging
 import os
+import shutil
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 def get_ipmi_temperatures():
     try:
-        cmd = f"ipmitool -H {os.environ.get('IPMI_HOST')} -U {os.environ.get('IPMI_USERNAME')} -P {os.environ.get('IPMI_PASSWORD')} sdr type temperature"
+        ipmi_host = os.environ.get('IPMI_HOST')
+        ipmi_user = os.environ.get('IPMI_USERNAME')
+        ipmi_pass = os.environ.get('IPMI_PASSWORD')
+        cmd = f"ipmitool -H {ipmi_host} -U {ipmi_user} -P {ipmi_pass} -I lanplus sdr type temperature"
         logger.debug(f"Executing IPMI command: {cmd}")
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
         logger.debug(f"IPMI command output: {result.stdout}")
         logger.debug(f"IPMI command error: {result.stderr}")
+        
+        if result.returncode != 0:
+            logger.error(f"IPMI command failed with return code {result.returncode}")
+            return []
+        
         temperatures = []
         for line in result.stdout.split('\n'):
             if line:
@@ -23,26 +32,49 @@ def get_ipmi_temperatures():
                 if len(parts) >= 3:
                     name = parts[0].strip()
                     value = parts[1].strip().split()[0]
-                    temperatures.append({'name': name, 'value': float(value)})
+                    try:
+                        temperatures.append({'name': name, 'value': float(value)})
+                    except ValueError:
+                        logger.warning(f"Could not parse temperature value: {value} for sensor: {name}")
+        
         logger.debug(f"Parsed IPMI temperatures: {temperatures}")
         return temperatures
+    except subprocess.TimeoutExpired:
+        logger.error("IPMI command timed out")
+        return []
     except Exception as e:
         logger.error(f"Error fetching IPMI temperatures: {e}")
         return []
 
 def get_gpu_temperatures():
+    if not shutil.which('nvidia-smi'):
+        logger.warning("nvidia-smi not found. GPU monitoring is not available.")
+        return []
+    
     try:
         cmd = "nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits"
         logger.debug(f"Executing GPU command: {cmd}")
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=10)
         logger.debug(f"GPU command output: {result.stdout}")
         logger.debug(f"GPU command error: {result.stderr}")
+        
+        if result.returncode != 0:
+            logger.error(f"GPU command failed with return code {result.returncode}")
+            return []
+        
         temperatures = []
         for i, line in enumerate(result.stdout.split('\n')):
             if line.strip():
-                temperatures.append({'name': f'GPU {i}', 'value': float(line.strip())})
+                try:
+                    temperatures.append({'name': f'GPU {i}', 'value': float(line.strip())})
+                except ValueError:
+                    logger.warning(f"Could not parse GPU temperature value: {line.strip()} for GPU {i}")
+        
         logger.debug(f"Parsed GPU temperatures: {temperatures}")
         return temperatures
+    except subprocess.TimeoutExpired:
+        logger.error("GPU command timed out")
+        return []
     except Exception as e:
         logger.error(f"Error fetching GPU temperatures: {e}")
         return []
@@ -60,5 +92,9 @@ def update_sensor_data():
         data = SensorData(timestamp=timestamp, sensor_type='GPU', sensor_name=temp['name'], value=temp['value'])
         db.session.add(data)
     
-    db.session.commit()
-    logger.info(f"Updated sensor data: {len(ipmi_temps)} IPMI sensors, {len(gpu_temps)} GPU sensors")
+    try:
+        db.session.commit()
+        logger.info(f"Updated sensor data: {len(ipmi_temps)} IPMI sensors, {len(gpu_temps)} GPU sensors")
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error committing sensor data to database: {e}")

@@ -1,21 +1,17 @@
-from flask import Blueprint, jsonify, request, render_template
-from app.models import SensorData
-from app import db
-from app.sensors import update_sensor_data
+from flask import Blueprint, jsonify, request, render_template, current_app
+import os
+import logging
 
 main = Blueprint('main', __name__)
+logger = logging.getLogger(__name__)
 
 @main.route('/')
 def index():
+    logger.debug(f"Current working directory: {os.getcwd()}")
+    logger.debug(f"Contents of current directory: {os.listdir('.')}")
+    logger.debug(f"Contents of app directory: {os.listdir('app')}")
+    logger.debug(f"Contents of templates directory: {os.listdir('app/templates')}")
+    logger.debug(f"Template folder: {current_app.template_folder}")
     return render_template('index.html')
 
-@main.route('/api/temperatures')
-def get_temperatures():
-    update_sensor_data()  # Update sensor data before fetching
-    ipmi_temps = SensorData.query.filter_by(sensor_type='IPMI').order_by(SensorData.timestamp.desc()).limit(10).all()
-    gpu_temps = SensorData.query.filter_by(sensor_type='GPU').order_by(SensorData.timestamp.desc()).limit(10).all()
-    
-    return jsonify({
-        'ipmi_temperatures': [{'name': t.sensor_name, 'value': t.value} for t in ipmi_temps],
-        'gpu_temperatures': [{'name': t.sensor_name, 'value': t.value} for t in gpu_temps]
-    })
+# ... (rest of the routes file)
