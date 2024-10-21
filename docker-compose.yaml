@@ -1,21 +1,22 @@
-version: '3.8'
+version: "3.8"
 
 services:
-  app:
+  ipmi-gpu-monitor:
     build: .
+    image: ghcr.io/hrtsv/ipmi-gpu-monitor:main
+    container_name: ipmi-gpu-monitor
+    restart: unless-stopped
     ports:
       - "5000:5000"
-    volumes:
-      - ./app:/app/app
-      - ./data:/app/data
     environment:
+      - NVIDIA_VISIBLE_DEVICES=all
       - SECRET_KEY=your_secret_key_here
       - JWT_SECRET_KEY=your_jwt_secret_key_here
       - IPMI_HOST=your_ipmi_host
       - IPMI_USERNAME=your_ipmi_username
       - IPMI_PASSWORD=your_ipmi_password
-    devices:
-      - /dev/ipmi0:/dev/ipmi0
+    volumes:
+      - /opt/stacks/ipmi-gpu-monitor/data:/app/data
     deploy:
       resources:
         reservations:
@@ -23,3 +24,18 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
+    networks:
+      - dockge_default
+      - openwebui_default
+      - searxng_searxng
+      - tika_default
+
+networks:
+  dockge_default:
+    external: true
+  openwebui_default:
+    external: true
+  searxng_searxng:
+    external: true
+  tika_default:
+    external: true
