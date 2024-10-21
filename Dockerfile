@@ -1,4 +1,4 @@
-Use an NVIDIA CUDA base image with Python 3.10
+#Use an NVIDIA CUDA base image with Python 3.10
 FROM nvidia/cuda:11.6.2-base-ubuntu20.04
 
 # Set the working directory in the container
