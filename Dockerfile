@@ -1,4 +1,4 @@
-#Use an NVIDIA CUDA base image with Python 3.10
+# Use an NVIDIA CUDA base image
 FROM nvidia/cuda:11.6.2-base-ubuntu20.04
 
 # Set the working directory in the container
@@ -8,20 +8,21 @@ WORKDIR /app
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Etc/UTC
 
-# Install system dependencies and Python 3.10
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    python3.10 \
-    python3.10-venv \
-    python3.10-dev \
+    python3.8 \
+    python3.8-venv \
+    python3.8-dev \
     python3-pip \
     build-essential \
     ipmitool \
     tzdata \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Create and activate virtual environment
-RUN python3.10 -m venv /opt/venv
+RUN python3.8 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Upgrade pip and setuptools
