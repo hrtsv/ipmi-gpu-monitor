@@ -11,21 +11,31 @@
         body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
         .chart-container { width: 80%; margin: 20px auto; }
         #error-message { color: red; margin-top: 20px; }
+        #debug-info { margin-top: 20px; border: 1px solid #ccc; padding: 10px; white-space: pre-wrap; }
     </style>
 </head>
 <body>
     <h1>IPMI Monitor</h1>
     <div id="charts"></div>
     <div id="error-message"></div>
+    <div id="debug-info"></div>
 
     <script>
         const chartsContainer = document.getElementById('charts');
         const errorMessageElement = document.getElementById('error-message');
+        const debugInfoElement = document.getElementById('debug-info');
         let charts = {};
 
+        function log(message) {
+            console.log(message);
+            debugInfoElement.textContent += message + '\n';
+        }
+
         function createOrUpdateChart(containerId, label, data) {
+            log(`Creating/Updating chart: ${containerId}`);
             const ctx = document.getElementById(containerId);
             if (!ctx) {
+                log(`Creating new canvas for ${containerId}`);
                 const container = document.createElement('div');
                 container.className = 'chart-container';
                 container.innerHTML = `<canvas id="${containerId}"></canvas>`;
@@ -33,10 +43,12 @@
             }
 
             if (charts[containerId]) {
+                log(`Updating existing chart: ${containerId}`);
                 charts[containerId].data.labels = data.map(d => luxon.DateTime.fromISO(d.timestamp));
                 charts[containerId].data.datasets[0].data = data.map(d => d.value);
                 charts[containerId].update();
             } else {
+                log(`Creating new chart: ${containerId}`);
                 charts[containerId] = new Chart(document.getElementById(containerId), {
                     type: 'line',
                     data: {
@@ -67,6 +79,7 @@
         }
 
         function updateCharts() {
+            log('Fetching sensor data...');
             fetch('/api/sensor_data')
                 .then(response => {
                     if (!response.ok) {
@@ -75,6 +88,7 @@
                     return response.json();
                 })
                 .then(data => {
+                    log(`Received data: ${JSON.stringify(data)}`);
                     errorMessageElement.textContent = ''; // Clear any previous error messages
 
                     // Create or update temperature charts
@@ -95,6 +109,7 @@
                         const sensorName = name.replace(/-/g, ' ');
                         if ((type === 'temp' && !data.temperatures[sensorName]) ||
                             (type === 'fan' && !data.fans[sensorName])) {
+                            log(`Removing chart: ${chartId}`);
                             charts[chartId].destroy();
                             delete charts[chartId];
                             document.getElementById(chartId).parentNode.remove();
@@ -103,6 +118,7 @@
                 })
                 .catch(error => {
                     console.error('Error:', error);
+                    log(`Error: ${error.message}`);
                     errorMessageElement.textContent = `Error fetching data: ${error.message}`;
                 });
         }
