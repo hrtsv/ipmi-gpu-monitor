@@ -31,11 +31,18 @@ RUN python3.8 -m venv /opt/venv
 
 # Install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Verify installations
+RUN pip freeze
 
 # Copy application code
 COPY app ./app
 COPY run.py .
 
+# Create data directory if it doesn't exist
+RUN mkdir -p /app/data
+
 # Command to run the application
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "1", "--threads", "1", "run:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "1", "--threads", "1", "--timeout", "120", "run:app"]
