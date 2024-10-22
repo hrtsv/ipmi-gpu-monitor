@@ -17,11 +17,13 @@
         .chart-container { 
             width: 100%; 
             margin: 20px auto;
+            max-width: 1200px;  /* Ensure graph fits within the screen */
             height: 400px;
             background-color: white;
             padding: 15px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden; /* Prevent graph overflow */
         }
         .chart-section {
             margin-bottom: 30px;
@@ -112,14 +114,23 @@
                             text: label
                         }
                     },
+                    layout: {
+                        padding: {
+                            right: 20,  // Add padding to prevent graph overflow on the right
+                        }
+                    },
                     scales: {
                         x: {
                             type: 'time',
                             time: {
                                 tooltipFormat: 'HH:mm:ss',
-                                unit: 'minute',
+                                unit: 'minute',  // Change dynamically based on time range
                                 displayFormats: {
-                                    minute: 'HH:mm:ss'
+                                    minute: 'HH:mm:ss',
+                                    hour: 'HH:mm',
+                                    day: 'MMM D',
+                                    week: 'MMM D',
+                                    month: 'MMM YYYY',
                                 }
                             },
                             title: {
@@ -142,22 +153,32 @@
         function filterDataByTimeRange(data, timeRange) {
             const now = moment();
             let startTime;
+            let timeUnit;
             switch (timeRange) {
                 case '1h': // Last hour
                     startTime = now.subtract(1, 'hours');
+                    timeUnit = 'minute';
                     break;
                 case '1d': // Last day
                     startTime = now.subtract(1, 'days');
+                    timeUnit = 'hour';
                     break;
                 case '1w': // Last week
                     startTime = now.subtract(1, 'weeks');
+                    timeUnit = 'day';
                     break;
                 case '1m': // Last month
                     startTime = now.subtract(1, 'months');
+                    timeUnit = 'week';
                     break;
                 default:
                     startTime = now.subtract(1, 'hours');
+                    timeUnit = 'minute';
             }
+
+            // Update chart x-axis unit based on selected range
+            temperatureChart.options.scales.x.time.unit = timeUnit;
+            fanChart.options.scales.x.time.unit = timeUnit;
 
             return data.filter(item => moment(item.timestamp).isAfter(startTime));
         }
