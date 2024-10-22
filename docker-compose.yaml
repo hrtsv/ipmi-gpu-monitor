@@ -2,7 +2,6 @@ version: "3.8"
 
 services:
   ipmi-gpu-monitor:
-    build: .
     image: ghcr.io/hrtsv/ipmi-gpu-monitor:main
     container_name: ipmi-gpu-monitor
     restart: unless-stopped
@@ -22,7 +21,6 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
-    command: ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "1", "--threads", "1", "run:app"]
     networks:
       - dockge_default
       - openwebui_default
