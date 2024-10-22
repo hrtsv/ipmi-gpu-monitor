@@ -10,8 +10,6 @@ services:
       - "5000:5000"
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
-      - SECRET_KEY=your_secret_key_here
-      - JWT_SECRET_KEY=your_jwt_secret_key_here
       - IPMI_HOST=your_ipmi_host
       - IPMI_USERNAME=your_ipmi_username
       - IPMI_PASSWORD=your_ipmi_password
