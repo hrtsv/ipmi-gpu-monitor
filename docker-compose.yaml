@@ -22,6 +22,7 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
+    command: ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "1", "--threads", "1", "run:app"]
     networks:
       - dockge_default
       - openwebui_default
