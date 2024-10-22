@@ -2,6 +2,7 @@ from app import db
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 
+# User model
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), unique=True, nullable=False)
@@ -22,12 +23,23 @@ class User(db.Model):
             db.session.add(default_user)
             db.session.commit()
 
+# SensorData model for storing temperature and fan readings
 class SensorData(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    sensor_type = db.Column(db.String(64), nullable=False)
-    sensor_name = db.Column(db.String(64), nullable=False)
-    value = db.Column(db.Float, nullable=False)
+    sensor_type = db.Column(db.String(64), nullable=False)  # Temperature or Fan
+    sensor_name = db.Column(db.String(64), nullable=False)  # Name of the sensor (e.g., CPU, GPU)
+    value = db.Column(db.Float, nullable=False)  # The value of the sensor (temperature or fan speed)
 
     def __repr__(self):
         return f'<SensorData {self.sensor_type} {self.sensor_name}: {self.value}>'
+
+# SensorThreshold model to store acceptable temperature ranges for sensors
+class SensorThreshold(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    sensor_name = db.Column(db.String(64), nullable=False)  # Sensor name (e.g., CPU, GPU)
+    min_value = db.Column(db.Float, nullable=False)  # Minimum acceptable temperature
+    max_value = db.Column(db.Float, nullable=False)  # Maximum acceptable temperature
+
+    def __repr__(self):
+        return f'<SensorThreshold {self.sensor_name}: {self.min_value}-{self.max_value}>'
