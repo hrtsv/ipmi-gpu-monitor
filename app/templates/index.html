@@ -50,17 +50,36 @@
             width: 100%;
             height: 100%;
         }
+        .time-range-selector {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .time-range-selector label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
     </style>
 </head>
 <body>
     <h1>IPMI Monitor</h1>
     <div id="error-message"></div>
+
     <div class="chart-section">
         <h2 class="section-title">Temperature Sensors</h2>
+        <div class="time-range-selector">
+            <label for="time-range">Time Range:</label>
+            <select id="time-range">
+                <option value="1h">Last Hour</option>
+                <option value="1d">Last Day</option>
+                <option value="1w">Last Week</option>
+                <option value="1m">Last Month</option>
+            </select>
+        </div>
         <div class="chart-container">
             <canvas id="temperature-chart"></canvas>
         </div>
     </div>
+
     <div class="chart-section">
         <h2 class="section-title">Fan Speeds</h2>
         <div class="chart-container">
@@ -71,6 +90,7 @@
     <script>
         const temperatureChartCtx = document.getElementById('temperature-chart').getContext('2d');
         const fanChartCtx = document.getElementById('fan-chart').getContext('2d');
+        const timeRangeSelector = document.getElementById('time-range');
         const errorMessageDiv = document.getElementById('error-message');
         
         let temperatureChart = null;
@@ -96,7 +116,6 @@
                         x: {
                             type: 'time',
                             time: {
-                                parser: 'YYYY-MM-DDTHH:mm:ss.SSSZ',
                                 tooltipFormat: 'HH:mm:ss',
                                 unit: 'minute',
                                 displayFormats: {
@@ -120,7 +139,31 @@
             });
         }
 
+        function filterDataByTimeRange(data, timeRange) {
+            const now = moment();
+            let startTime;
+            switch (timeRange) {
+                case '1h': // Last hour
+                    startTime = now.subtract(1, 'hours');
+                    break;
+                case '1d': // Last day
+                    startTime = now.subtract(1, 'days');
+                    break;
+                case '1w': // Last week
+                    startTime = now.subtract(1, 'weeks');
+                    break;
+                case '1m': // Last month
+                    startTime = now.subtract(1, 'months');
+                    break;
+                default:
+                    startTime = now.subtract(1, 'hours');
+            }
+
+            return data.filter(item => moment(item.timestamp).isAfter(startTime));
+        }
+
         function updateCharts() {
+            const timeRange = timeRangeSelector.value; // Get selected time range
             fetch('/api/sensor_data')
                 .then(response => {
                     if (!response.ok) {
@@ -139,10 +182,11 @@
                         let labels = [];
                         temperatureChart.data.datasets = [];
                         Object.entries(data.temperatures).forEach(([name, readings], index) => {
-                            labels = readings.map(r => r.timestamp); // Assumes all sensors share the same timestamps
+                            const filteredReadings = filterDataByTimeRange(readings, timeRange);
+                            labels = filteredReadings.map(r => r.timestamp); // Assumes all sensors share the same timestamps
                             temperatureChart.data.datasets.push({
                                 label: `${name} Temperature`,
-                                data: readings.map(r => ({x: r.timestamp, y: r.value})),
+                                data: filteredReadings.map(r => ({x: r.timestamp, y: r.value})),
                                 borderColor: `hsl(${index * 60}, 70%, 50%)`,
                                 backgroundColor: `hsla(${index * 60}, 70%, 50%, 0.1)`,
                                 fill: false,
@@ -161,10 +205,11 @@
                         let labels = [];
                         fanChart.data.datasets = [];
                         Object.entries(data.fans).forEach(([name, readings], index) => {
-                            labels = readings.map(r => r.timestamp); // Assumes all fans share the same timestamps
+                            const filteredReadings = filterDataByTimeRange(readings, timeRange);
+                            labels = filteredReadings.map(r => r.timestamp); // Assumes all fans share the same timestamps
                             fanChart.data.datasets.push({
                                 label: `${name} Fan Speed`,
-                                data: readings.map(r => ({x: r.timestamp, y: r.value})),
+                                data: filteredReadings.map(r => ({x: r.timestamp, y: r.value})),
                                 borderColor: `hsl(${index * 60}, 70%, 50%)`,
                                 backgroundColor: `hsla(${index * 60}, 70%, 50%, 0.1)`,
                                 fill: false,
@@ -181,6 +226,9 @@
                     errorMessageDiv.textContent = `Error fetching data: ${error.message}`;
                 });
         }
+
+        // Update charts on time range change
+        timeRangeSelector.addEventListener('change', updateCharts);
 
         // Initial update
         updateCharts();
