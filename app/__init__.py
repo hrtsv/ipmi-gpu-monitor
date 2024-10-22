@@ -1,7 +1,6 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 import logging
-import os
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
