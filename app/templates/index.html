@@ -5,81 +5,130 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IPMI Monitor</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/luxon@2.0.2/build/global/luxon.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.1.0/dist/chartjs-adapter-luxon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment"></script>
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-        .chart-container { width: 80%; margin: 20px auto; }
-        #error-message { color: red; margin-top: 20px; }
-        #debug-info { margin-top: 20px; border: 1px solid #ccc; padding: 10px; white-space: pre-wrap; }
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .chart-container { 
+            width: 90%; 
+            margin: 20px auto;
+            height: 300px;
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .chart-section {
+            margin-bottom: 30px;
+        }
+        .section-title {
+            color: #333;
+            margin: 20px 0;
+            padding-left: 5%;
+        }
+        #error-message { 
+            color: red;
+            margin: 20px auto;
+            width: 90%;
+            padding: 10px;
+            background-color: #ffebee;
+            border-radius: 4px;
+            display: none;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
     </style>
 </head>
 <body>
     <h1>IPMI Monitor</h1>
-    <div id="charts"></div>
     <div id="error-message"></div>
-    <div id="debug-info"></div>
+    <div class="chart-section">
+        <h2 class="section-title">Temperature Sensors</h2>
+        <div id="temperature-charts"></div>
+    </div>
+    <div class="chart-section">
+        <h2 class="section-title">Fan Speeds</h2>
+        <div id="fan-charts"></div>
+    </div>
 
     <script>
-        const chartsContainer = document.getElementById('charts');
-        const errorMessageElement = document.getElementById('error-message');
-        const debugInfoElement = document.getElementById('debug-info');
+        const tempChartsDiv = document.getElementById('temperature-charts');
+        const fanChartsDiv = document.getElementById('fan-charts');
+        const errorMessageDiv = document.getElementById('error-message');
         let charts = {};
 
-        function log(message) {
-            console.log(message);
-            debugInfoElement.textContent += message + '\n';
-        }
-
-        function createOrUpdateChart(containerId, label, data) {
-            log(`Creating/Updating chart: ${containerId}`);
-            const ctx = document.getElementById(containerId);
-            if (!ctx) {
-                log(`Creating new canvas for ${containerId}`);
-                const container = document.createElement('div');
-                container.className = 'chart-container';
-                container.innerHTML = `<canvas id="${containerId}"></canvas>`;
-                chartsContainer.appendChild(container);
+        function createChart(containerId, label, type) {
+            const container = document.createElement('div');
+            container.className = 'chart-container';
+            container.innerHTML = `<canvas id="${containerId}"></canvas>`;
+            
+            if (type === 'temperature') {
+                tempChartsDiv.appendChild(container);
+            } else {
+                fanChartsDiv.appendChild(container);
             }
 
-            if (charts[containerId]) {
-                log(`Updating existing chart: ${containerId}`);
-                charts[containerId].data.labels = data.map(d => luxon.DateTime.fromISO(d.timestamp));
-                charts[containerId].data.datasets[0].data = data.map(d => d.value);
-                charts[containerId].update();
-            } else {
-                log(`Creating new chart: ${containerId}`);
-                charts[containerId] = new Chart(document.getElementById(containerId), {
-                    type: 'line',
-                    data: {
-                        labels: data.map(d => luxon.DateTime.fromISO(d.timestamp)),
-                        datasets: [{
-                            label: label,
-                            data: data.map(d => d.value),
-                            borderColor: 'rgb(75, 192, 192)',
-                            tension: 0.1
-                        }]
+            const ctx = document.getElementById(containerId).getContext('2d');
+            return new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: label,
+                        data: [],
+                        borderColor: type === 'temperature' ? 'rgb(255, 99, 132)' : 'rgb(54, 162, 235)',
+                        backgroundColor: type === 'temperature' ? 'rgba(255, 99, 132, 0.1)' : 'rgba(54, 162, 235, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: label
+                        }
                     },
-                    options: {
-                        responsive: true,
-                        scales: {
-                            x: {
-                                type: 'time',
-                                time: {
-                                    unit: 'minute'
+                    scales: {
+                        x: {
+                            type: 'time',
+                            display: true,
+                            time: {
+                                parser: 'YYYY-MM-DDTHH:mm:ss.SSSZ',
+                                tooltipFormat: 'HH:mm:ss',
+                                unit: 'minute',
+                                displayFormats: {
+                                    minute: 'HH:mm:ss'
                                 }
                             },
-                            y: {
-                                beginAtZero: true
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: type === 'temperature' ? 'Temperature (°C)' : 'Fan Speed (RPM)'
                             }
                         }
                     }
-                });
-            }
+                }
+            });
         }
 
         function updateCharts() {
-            log('Fetching sensor data...');
             fetch('/api/sensor_data')
                 .then(response => {
                     if (!response.ok) {
@@ -88,43 +137,45 @@
                     return response.json();
                 })
                 .then(data => {
-                    log(`Received data: ${JSON.stringify(data)}`);
-                    errorMessageElement.textContent = ''; // Clear any previous error messages
+                    errorMessageDiv.style.display = 'none';
 
-                    // Create or update temperature charts
-                    for (const [sensorName, sensorData] of Object.entries(data.temperatures)) {
-                        const containerId = `chart-temp-${sensorName.replace(/\s+/g, '-')}`;
-                        createOrUpdateChart(containerId, `${sensorName} Temperature`, sensorData);
+                    // Update temperature charts
+                    if (data.temperatures) {
+                        Object.entries(data.temperatures).forEach(([name, readings]) => {
+                            const chartId = `temp-${name.replace(/\s+/g, '-')}`;
+                            if (!charts[chartId]) {
+                                charts[chartId] = createChart(chartId, `${name} Temperature`, 'temperature');
+                            }
+                            charts[chartId].data.labels = readings.map(r => r.timestamp);
+                            charts[chartId].data.datasets[0].data = readings.map(r => r.value);
+                            charts[chartId].update();
+                        });
                     }
 
-                    // Create or update fan charts
-                    for (const [sensorName, sensorData] of Object.entries(data.fans)) {
-                        const containerId = `chart-fan-${sensorName.replace(/\s+/g, '-')}`;
-                        createOrUpdateChart(containerId, `${sensorName} Fan Speed`, sensorData);
-                    }
-
-                    // Remove charts for sensors that no longer exist
-                    for (const chartId in charts) {
-                        const [, type, name] = chartId.split('-');
-                        const sensorName = name.replace(/-/g, ' ');
-                        if ((type === 'temp' && !data.temperatures[sensorName]) ||
-                            (type === 'fan' && !data.fans[sensorName])) {
-                            log(`Removing chart: ${chartId}`);
-                            charts[chartId].destroy();
-                            delete charts[chartId];
-                            document.getElementById(chartId).parentNode.remove();
-                        }
+                    // Update fan charts
+                    if (data.fans) {
+                        Object.entries(data.fans).forEach(([name, readings]) => {
+                            const chartId = `fan-${name.replace(/\s+/g, '-')}`;
+                            if (!charts[chartId]) {
+                                charts[chartId] = createChart(chartId, `${name} Fan Speed`, 'fan');
+                            }
+                            charts[chartId].data.labels = readings.map(r => r.timestamp);
+                            charts[chartId].data.datasets[0].data = readings.map(r => r.value);
+                            charts[chartId].update();
+                        });
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    log(`Error: ${error.message}`);
-                    errorMessageElement.textContent = `Error fetching data: ${error.message}`;
+                    errorMessageDiv.style.display = 'block';
+                    errorMessageDiv.textContent = `Error fetching data: ${error.message}`;
                 });
         }
 
-        // Update charts every 30 seconds
+        // Initial update
         updateCharts();
+
+        // Update every 30 seconds
         setInterval(updateCharts, 30000);
     </script>
 </body>
