@@ -2,8 +2,12 @@ version: "3.8"
 
 services:
   ipmi-gpu-monitor:
-    build: .
     image: ghcr.io/hrtsv/ipmi-gpu-monitor:main
+    build:
+      context: .
+      dockerfile: Dockerfile
+      no_cache: true
+    pull_policy: always
     container_name: ipmi-gpu-monitor
     restart: unless-stopped
     ports:
