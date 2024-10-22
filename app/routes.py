@@ -1,10 +1,8 @@
-from flask import Blueprint, jsonify, request, render_template
+from flask import Blueprint, jsonify, render_template
 from app.models import SensorData
 from app import db
 from app.sensors import update_sensor_data
-from sqlalchemy import func
 import logging
-from datetime import datetime, timedelta
 
 main = Blueprint('main', __name__)
 logger = logging.getLogger(__name__)
@@ -16,44 +14,32 @@ def index():
 @main.route('/api/sensor_data')
 def get_sensor_data():
     try:
-        update_sensor_data()  # Update sensor data before fetching
+        update_sensor_data()
+        temperatures = SensorData.query.filter_by(sensor_type='Temperature').order_by(SensorData.timestamp.desc()).limit(10).all()
+        fans = SensorData.query.filter_by(sensor_type='Fan').order_by(SensorData.timestamp.desc()).limit(10).all()
         
-        # Get data for the last 24 hours
-        start_time = datetime.utcnow() - timedelta(hours=24)
+        temp_data = {}
+        fan_data = {}
         
-        temp_data = SensorData.query.filter(
-            SensorData.sensor_type == 'Temperature',
-            SensorData.timestamp >= start_time
-        ).order_by(SensorData.timestamp.asc()).all()
-        
-        fan_data = SensorData.query.filter(
-            SensorData.sensor_type == 'Fan',
-            SensorData.timestamp >= start_time
-        ).order_by(SensorData.timestamp.asc()).all()
-        
-        # Group data by sensor name
-        temp_grouped = {}
-        fan_grouped = {}
-        
-        for data in temp_data:
-            if data.sensor_name not in temp_grouped:
-                temp_grouped[data.sensor_name] = []
-            temp_grouped[data.sensor_name].append({
-                'timestamp': data.timestamp.isoformat(),
-                'value': data.value
+        for temp in temperatures:
+            if temp.sensor_name not in temp_data:
+                temp_data[temp.sensor_name] = []
+            temp_data[temp.sensor_name].append({
+                'timestamp': temp.timestamp.isoformat(),
+                'value': temp.value
             })
         
-        for data in fan_data:
-            if data.sensor_name not in fan_grouped:
-                fan_grouped[data.sensor_name] = []
-            fan_grouped[data.sensor_name].append({
-                'timestamp': data.timestamp.isoformat(),
-                'value': data.value
+        for fan in fans:
+            if fan.sensor_name not in fan_data:
+                fan_data[fan.sensor_name] = []
+            fan_data[fan.sensor_name].append({
+                'timestamp': fan.timestamp.isoformat(),
+                'value': fan.value
             })
         
         return jsonify({
-            'temperatures': temp_grouped,
-            'fans': fan_grouped
+            'temperatures': temp_data,
+            'fans': fan_data
         })
     except Exception as e:
         logger.error(f"Error in get_sensor_data: {e}")

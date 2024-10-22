@@ -6,14 +6,6 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-try:
-    from flask_jwt_extended import JWTManager
-    jwt = JWTManager()
-    logger.info("JWT extension loaded successfully")
-except ImportError as e:
-    logger.error(f"Failed to import JWT: {e}")
-    jwt = None
-
 db = SQLAlchemy()
 
 def create_app():
@@ -26,10 +18,6 @@ def create_app():
     
     # Initialize extensions
     db.init_app(app)
-    
-    if jwt:
-        app.config['JWT_SECRET_KEY'] = 'your-jwt-secret-key'
-        jwt.init_app(app)
     
     with app.app_context():
         db.create_all()

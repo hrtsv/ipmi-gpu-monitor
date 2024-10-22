@@ -22,18 +22,9 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python packages directly
-RUN pip3 install --no-cache-dir \
-    Flask==2.0.3 \
-    Werkzeug==2.0.3 \
-    Flask-SQLAlchemy==2.5.1 \
-    Flask-JWT-Extended==4.3.1 \
-    SQLAlchemy==1.3.24 \
-    gunicorn==20.1.0 \
-    python-dotenv==0.19.2
-
-# Verify JWT package installation
-RUN python3 -c "from flask_jwt_extended import JWTManager; print('JWT package successfully installed')"
+# Install Python packages
+COPY requirements.txt .
+RUN pip3 install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY app ./app
