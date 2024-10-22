@@ -1,34 +1,41 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-from flask_jwt_extended import JWTManager
-from app.config import Config
-import os
 import logging
 
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+try:
+    from flask_jwt_extended import JWTManager
+    jwt = JWTManager()
+    logger.info("JWT extension loaded successfully")
+except ImportError as e:
+    logger.error(f"Failed to import JWT: {e}")
+    jwt = None
+
 db = SQLAlchemy()
-jwt = JWTManager()
 
-def create_app(config_class=Config):
+def create_app():
     app = Flask(__name__)
-    app.config.from_object(config_class)
-
+    
+    # Configure the Flask application
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SECRET_KEY'] = 'your-secret-key'
+    
+    # Initialize extensions
     db.init_app(app)
-    jwt.init_app(app)
-
-    # Configure logging
-    logging.basicConfig(level=logging.DEBUG)
-
+    
+    if jwt:
+        app.config['JWT_SECRET_KEY'] = 'your-jwt-secret-key'
+        jwt.init_app(app)
+    
     with app.app_context():
-        # Import models here to ensure they are registered with SQLAlchemy
-        from app.models import SensorData
         db.create_all()
-        app.logger.info("Database initialized")
-
+        logger.info("Database initialized successfully")
+    
     from app.routes import main
     app.register_blueprint(main)
-
-    @app.route('/health')
-    def health_check():
-        return "OK", 200
-
+    
     return app

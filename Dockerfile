@@ -1,4 +1,3 @@
-# Use an NVIDIA CUDA base image
 FROM nvidia/cuda:11.6.2-base-ubuntu20.04
 
 # Set environment variables
@@ -6,18 +5,15 @@ ENV DEBIAN_FRONTEND=noninteractive \
     TZ=Etc/UTC \
     PYTHONUNBUFFERED=1 \
     FLASK_APP=run.py \
-    FLASK_RUN_HOST=0.0.0.0 \
-    PATH="/opt/venv/bin:$PATH"
+    FLASK_RUN_HOST=0.0.0.0
 
 # Set the working directory
 WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    python3.8 \
-    python3.8-venv \
-    python3.8-dev \
     python3-pip \
+    python3-dev \
     build-essential \
     ipmitool \
     tzdata \
@@ -26,22 +22,24 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Create virtual environment
-RUN python3.8 -m venv /opt/venv
+# Install Python packages directly
+RUN pip3 install --no-cache-dir \
+    Flask==2.0.3 \
+    Werkzeug==2.0.3 \
+    Flask-SQLAlchemy==2.5.1 \
+    Flask-JWT-Extended==4.3.1 \
+    SQLAlchemy==1.3.24 \
+    gunicorn==20.1.0 \
+    python-dotenv==0.19.2
 
-# Install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir -r requirements.txt
-
-# Verify installations
-RUN pip freeze
+# Verify JWT package installation
+RUN python3 -c "from flask_jwt_extended import JWTManager; print('JWT package successfully installed')"
 
 # Copy application code
 COPY app ./app
 COPY run.py .
 
-# Create data directory if it doesn't exist
+# Create data directory
 RUN mkdir -p /app/data
 
 # Command to run the application
