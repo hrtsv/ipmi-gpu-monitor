@@ -20,10 +20,12 @@ def create_app():
     db.init_app(app)
     
     with app.app_context():
+        # Import routes after app creation to avoid circular imports
+        from app.routes import main
+        app.register_blueprint(main)
+        
+        # Create database tables
         db.create_all()
         logger.info("Database initialized successfully")
-    
-    from app.routes import main
-    app.register_blueprint(main)
     
     return app
