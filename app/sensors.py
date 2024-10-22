@@ -2,7 +2,7 @@ import subprocess
 import logging
 import os
 from app import db
-from app.models import SensorData
+from app.models import SensorData, SensorThreshold
 from datetime import datetime
 import shutil
 
@@ -83,10 +83,61 @@ def get_gpu_temperatures():
         logger.warning(f"Error fetching GPU temperatures: {e}")
         return []
 
+def adjust_fan_speeds():
+    """
+    Adjust fan speeds based on current temperature readings and thresholds.
+    """
+    try:
+        # Fetch the latest temperature readings
+        temperatures = SensorData.query.filter_by(sensor_type='Temperature').order_by(SensorData.timestamp.desc()).all()
+        
+        # Fetch the threshold settings for each sensor
+        thresholds = {t.sensor_name: t for t in SensorThreshold.query.all()}
+        
+        fan_adjustments = {}
+
+        for temp in temperatures:
+            sensor_name = temp.sensor_name
+            sensor_value = temp.value
+
+            # Get the corresponding threshold for the sensor
+            threshold = thresholds.get(sensor_name)
+            if threshold:
+                # Adjust fan speeds based on temperature readings and thresholds
+                if sensor_value > threshold.max_value:
+                    # Temperature is too high, increase fan speed
+                    fan_speed = min(100, (sensor_value - threshold.max_value) * 2)  # Example logic
+                elif sensor_value < threshold.min_value:
+                    # Temperature is too low, decrease fan speed
+                    fan_speed = max(10, (threshold.min_value - sensor_value) * 2)  # Example logic
+                else:
+                    # Keep fan at a moderate speed
+                    fan_speed = 50
+
+                # Store the adjusted fan speed
+                fan_adjustments[sensor_name] = fan_speed
+
+        # Apply fan adjustments to the database or external hardware (IPMI)
+        for sensor_name, fan_speed in fan_adjustments.items():
+            logger.info(f"Adjusting fan speed for {sensor_name} to {fan_speed}%")
+            update_fan_speed(sensor_name, fan_speed)  # Function to update fan speeds
+
+    except Exception as e:
+        logger.error(f"Error in adjust_fan_speeds: {e}")
+
+def update_fan_speed(sensor_name, speed):
+    # Example placeholder for actual hardware fan control logic (IPMI or similar)
+    logger.info(f"Updating fan speed for {sensor_name} to {speed}%")
+    # Use IPMI commands to control fans based on the sensor name and desired speed
+
 def update_sensor_data():
+    """
+    Fetch IPMI and GPU sensor data, store it in the database, and adjust fan speeds accordingly.
+    """
     try:
         timestamp = datetime.utcnow()
         
+        # Fetch data from IPMI sensors
         temperatures, fans = get_ipmi_data()
         
         # Store temperature data
@@ -120,7 +171,12 @@ def update_sensor_data():
             )
             db.session.add(data)
         
+        # Commit data to the database
         db.session.commit()
+
+        # Adjust fan speeds based on sensor data
+        adjust_fan_speeds()
+
         logger.info(f"Updated sensor data: {len(temperatures)} temperature sensors, {len(fans)} fan sensors, {len(gpu_temps)} GPU temperature sensors")
         
     except Exception as e:
