@@ -14,232 +14,168 @@
             padding: 20px;
             background-color: #f5f5f5;
         }
-        .chart-container { 
-            width: 100%; 
+        .chart-section { 
             margin: 20px auto;
-            max-width: 1200px;  /* Ensure graph fits within the screen */
-            height: 400px;
-            background-color: white;
-            padding: 15px;
+            padding: 20px;
+            background: white;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            overflow: hidden; /* Prevent graph overflow */
-        }
-        .chart-section {
-            margin-bottom: 30px;
         }
         .section-title {
             color: #333;
+            margin: 0 0 20px 0;
+            padding-left: 10px;
+            border-left: 4px solid #4CAF50;
+        }
+        .chart-container {
+            height: 400px;
             margin: 20px 0;
-            padding-left: 5%;
         }
-        #error-message { 
-            color: red;
-            margin: 20px auto;
-            width: 90%;
-            padding: 10px;
-            background-color: #ffebee;
-            border-radius: 4px;
+        #error-message {
             display: none;
-        }
-        h1 {
-            color: #333;
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
+            color: red;
+            padding: 10px;
+            margin: 10px 0;
+            background: #ffebee;
+            border-radius: 4px;
         }
         .time-range-selector {
-            text-align: center;
-            margin-bottom: 20px;
+            margin: 10px 0;
         }
-        .time-range-selector label {
-            font-weight: bold;
-            margin-right: 10px;
+        .time-range-selector button {
+            padding: 8px 16px;
+            margin: 0 5px;
+            border: none;
+            border-radius: 4px;
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+        }
+        .time-range-selector button:hover {
+            background: #45a049;
         }
     </style>
 </head>
 <body>
     <h1>IPMI Monitor</h1>
+    
     <div id="error-message"></div>
 
     <div class="chart-section">
         <h2 class="section-title">Temperature Sensors</h2>
         <div class="time-range-selector">
-            <label for="time-range">Time Range:</label>
-            <select id="time-range">
-                <option value="1h">Last Hour</option>
-                <option value="1d">Last Day</option>
-                <option value="1w">Last Week</option>
-                <option value="1m">Last Month</option>
-            </select>
+            <button onclick="setTimeRange('1h')">Last Hour</button>
+            <button onclick="setTimeRange('1d')">Last Day</button>
+            <button onclick="setTimeRange('1w')">Last Week</button>
+            <button onclick="setTimeRange('1m')">Last Month</button>
         </div>
-        <div class="chart-container">
-            <canvas id="temperature-chart"></canvas>
-        </div>
+        <div id="temperature-charts" class="chart-container"></div>
     </div>
 
     <div class="chart-section">
         <h2 class="section-title">Fan Speeds</h2>
-        <div class="chart-container">
-            <canvas id="fan-chart"></canvas>
-        </div>
+        <div id="fan-charts" class="chart-container"></div>
     </div>
 
     <script>
-        const temperatureChartCtx = document.getElementById('temperature-chart').getContext('2d');
-        const fanChartCtx = document.getElementById('fan-chart').getContext('2d');
-        const timeRangeSelector = document.getElementById('time-range');
+        const tempChartsDiv = document.getElementById('temperature-charts');
+        const fanChartsDiv = document.getElementById('fan-charts');
         const errorMessageDiv = document.getElementById('error-message');
-        
-        let temperatureChart = null;
-        let fanChart = null;
+        let charts = {};
+        let currentTimeRange = '1h';
 
-        function createCombinedChart(ctx, label, yLabel, colorSet) {
-            return new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: []
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: label
-                        }
+        function setTimeRange(range) {
+            currentTimeRange = range;
+            updateCharts();
+        }
+
+        function createOrUpdateChart(containerId, label, data, type) {
+            if (!document.getElementById(containerId)) {
+                const canvas = document.createElement('canvas');
+                canvas.id = containerId;
+                if (type === 'temperature') {
+                    tempChartsDiv.appendChild(canvas);
+                } else {
+                    fanChartsDiv.appendChild(canvas);
+                }
+            }
+
+            const ctx = document.getElementById(containerId).getContext('2d');
+            
+            if (charts[containerId]) {
+                charts[containerId].data.labels = data.map(d => d.timestamp);
+                charts[containerId].data.datasets[0].data = data.map(d => d.value);
+                charts[containerId].update();
+            } else {
+                charts[containerId] = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.map(d => d.timestamp),
+                        datasets: [{
+                            label: label,
+                            data: data.map(d => d.value),
+                            borderColor: type === 'temperature' ? 'rgb(255, 99, 132)' : 'rgb(54, 162, 235)',
+                            backgroundColor: type === 'temperature' ? 'rgba(255, 99, 132, 0.1)' : 'rgba(54, 162, 235, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }]
                     },
-                    layout: {
-                        padding: {
-                            right: 20,  // Add padding to prevent graph overflow on the right
-                        }
-                    },
-                    scales: {
-                        x: {
-                            type: 'time',
-                            time: {
-                                tooltipFormat: 'HH:mm:ss',
-                                unit: 'minute',  // Change dynamically based on time range
-                                displayFormats: {
-                                    minute: 'HH:mm:ss',
-                                    hour: 'HH:mm',
-                                    day: 'MMM D',
-                                    week: 'MMM D',
-                                    month: 'MMM YYYY',
-                                }
-                            },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
                             title: {
                                 display: true,
-                                text: 'Time'
+                                text: label
                             }
                         },
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: yLabel
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: 'minute',
+                                    displayFormats: {
+                                        minute: 'HH:mm:ss'
+                                    }
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Time'
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: type === 'temperature' ? 'Temperature (°C)' : 'Fan Speed (RPM)'
+                                }
                             }
                         }
                     }
-                }
-            });
-        }
-
-        function filterDataByTimeRange(data, timeRange) {
-            const now = moment();
-            let startTime;
-            let timeUnit;
-            switch (timeRange) {
-                case '1h': // Last hour
-                    startTime = now.subtract(1, 'hours');
-                    timeUnit = 'minute';
-                    break;
-                case '1d': // Last day
-                    startTime = now.subtract(1, 'days');
-                    timeUnit = 'hour';
-                    break;
-                case '1w': // Last week
-                    startTime = now.subtract(1, 'weeks');
-                    timeUnit = 'day';
-                    break;
-                case '1m': // Last month
-                    startTime = now.subtract(1, 'months');
-                    timeUnit = 'week';
-                    break;
-                default:
-                    startTime = now.subtract(1, 'hours');
-                    timeUnit = 'minute';
+                });
             }
-
-            // Update chart x-axis unit based on selected range
-            temperatureChart.options.scales.x.time.unit = timeUnit;
-            fanChart.options.scales.x.time.unit = timeUnit;
-
-            return data.filter(item => moment(item.timestamp).isAfter(startTime));
         }
 
         function updateCharts() {
-            const timeRange = timeRangeSelector.value; // Get selected time range
             fetch('/api/sensor_data')
                 .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                     return response.json();
                 })
                 .then(data => {
                     errorMessageDiv.style.display = 'none';
+                    
+                    // Update temperature charts
+                    Object.entries(data.temperatures).forEach(([name, readings]) => {
+                        const containerId = `temp-${name.replace(/\s+/g, '-')}`;
+                        createOrUpdateChart(containerId, `${name} Temperature`, readings, 'temperature');
+                    });
 
-                    // Update temperature chart
-                    if (data.temperatures) {
-                        if (!temperatureChart) {
-                            temperatureChart = createCombinedChart(temperatureChartCtx, 'Temperature Sensors', 'Temperature (°C)', 'temperature');
-                        }
-                        let labels = [];
-                        temperatureChart.data.datasets = [];
-                        Object.entries(data.temperatures).forEach(([name, readings], index) => {
-                            const filteredReadings = filterDataByTimeRange(readings, timeRange);
-                            labels = filteredReadings.map(r => r.timestamp); // Assumes all sensors share the same timestamps
-                            temperatureChart.data.datasets.push({
-                                label: `${name} Temperature`,
-                                data: filteredReadings.map(r => ({x: r.timestamp, y: r.value})),
-                                borderColor: `hsl(${index * 60}, 70%, 50%)`,
-                                backgroundColor: `hsla(${index * 60}, 70%, 50%, 0.1)`,
-                                fill: false,
-                                tension: 0.4
-                            });
-                        });
-                        temperatureChart.data.labels = labels;
-                        temperatureChart.update();
-                    }
-
-                    // Update fan chart
-                    if (data.fans) {
-                        if (!fanChart) {
-                            fanChart = createCombinedChart(fanChartCtx, 'Fan Speeds', 'Fan Speed (RPM)', 'fan');
-                        }
-                        let labels = [];
-                        fanChart.data.datasets = [];
-                        Object.entries(data.fans).forEach(([name, readings], index) => {
-                            const filteredReadings = filterDataByTimeRange(readings, timeRange);
-                            labels = filteredReadings.map(r => r.timestamp); // Assumes all fans share the same timestamps
-                            fanChart.data.datasets.push({
-                                label: `${name} Fan Speed`,
-                                data: filteredReadings.map(r => ({x: r.timestamp, y: r.value})),
-                                borderColor: `hsl(${index * 60}, 70%, 50%)`,
-                                backgroundColor: `hsla(${index * 60}, 70%, 50%, 0.1)`,
-                                fill: false,
-                                tension: 0.4
-                            });
-                        });
-                        fanChart.data.labels = labels;
-                        fanChart.update();
-                    }
+                    // Update fan charts
+                    Object.entries(data.fans).forEach(([name, readings]) => {
+                        const containerId = `fan-${name.replace(/\s+/g, '-')}`;
+                        createOrUpdateChart(containerId, `${name} Fan Speed`, readings, 'fan');
+                    });
                 })
                 .catch(error => {
                     console.error('Error:', error);
@@ -248,13 +184,8 @@
                 });
         }
 
-        // Update charts on time range change
-        timeRangeSelector.addEventListener('change', updateCharts);
-
-        // Initial update
-        updateCharts();
-
         // Update every 30 seconds
+        updateCharts();
         setInterval(updateCharts, 30000);
     </script>
 </body>
